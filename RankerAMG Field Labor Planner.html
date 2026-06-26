@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RankerAMG Field Labor Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f7;
+    --panel: #ffffff;
+    --panel2: #f7f8fc;
+    --border: #d4d9e8;
+    --border2: #c0c8dc;
+    --accent: #d97706;
+    --accent2: #0284c7;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --text: #1e2330;
+    --muted: #6b7280;
+    --grid: #edf0f7;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      linear-gradient(rgba(209,160,50,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(209,160,50,0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── Config Banner ── */
+  #config-banner {
+    background: #fef3c7;
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  #config-banner .cfg-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #92400e;
+    white-space: nowrap;
+  }
+  #config-banner input {
+    flex: 1;
+    min-width: 180px;
+    max-width: 340px;
+    background: #fff;
+    border: 1px solid #fcd34d;
+    color: var(--text);
+    padding: 7px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    border-radius: 3px;
+    outline: none;
+  }
+  #config-banner input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  #btn-connect {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  #btn-connect:hover { background: #b45309; }
+  #btn-connect:disabled { opacity: 0.6; cursor: not-allowed; }
+  .cfg-help {
+    font-size: 11px;
+    color: #92400e;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .cfg-help a { color: var(--accent); }
+  #config-banner.connected {
+    background: #f0fdf4;
+    border-color: var(--success);
+  }
+  #config-banner.connected .cfg-label { color: #166534; }
+
+  header {
+    border-bottom: 2px solid var(--accent);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 0; height: 0; background: var(--accent); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+
+  .logo h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .logo span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 24px; }
+  .header-stats { display: flex; gap: 32px; }
+
+  .stat-pill { text-align: right; }
+  .stat-pill .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .stat-pill .value { font-size: 22px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--accent); }
+  .stat-pill.blue .value  { color: var(--accent2); }
+  .stat-pill.green .value { color: var(--success); }
+
+  .sync-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 5px 10px; border-radius: 20px;
+    border: 1px solid var(--border); color: var(--muted);
+    background: var(--panel2); white-space: nowrap;
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .sync-badge.syncing .sync-dot { background: var(--accent); animation: pulse 0.8s infinite; }
+  .sync-badge.synced  .sync-dot { background: var(--success); }
+  .sync-badge.error   .sync-dot { background: var(--danger); }
+  .sync-badge.offline .sync-dot { background: var(--muted); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* Loading overlay */
+  #loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(240,242,247,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; color: var(--muted); letter-spacing: 0.1em;
+    gap: 10px; transition: opacity 0.3s;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spin { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 32px; display: grid; gap: 28px; }
+
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .form-panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-top: 3px solid var(--accent); padding: 24px;
+    border-radius: 4px; box-shadow: var(--shadow);
+  }
+  .form-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px; align-items: end;
+  }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; background: var(--panel2); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 11px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; border-radius: 3px; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(217,119,6,0.12); }
+
+  .btn-add {
+    background: var(--accent); color: #fff; border: none; padding: 10px 22px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+    border-radius: 3px; transition: background 0.15s, transform 0.1s;
+    white-space: nowrap; align-self: end;
+  }
+  .btn-add:hover { background: #b45309; transform: translateY(-1px); }
+  .btn-add:active { transform: translateY(0); }
+  .btn-add:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .table-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--grid); font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); padding: 10px 14px; text-align: left;
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; animation: rowIn 0.22s ease forwards; }
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+  tbody tr:hover { background: rgba(217,119,6,0.04); }
+  tbody tr.editing-row { background: #fffbf0 !important; }
+  tbody td { padding: 9px 14px; font-family: 'IBM Plex Mono', monospace; color: var(--text); }
+
+  td input.cell-input, td select.cell-select {
+    width: 100%; background: #fff; border: 1px solid var(--accent); color: var(--text);
+    padding: 5px 7px; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    border-radius: 3px; outline: none; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); min-width: 80px;
+  }
+  td input.cell-input[type="date"]   { min-width: 120px; }
+  td input.cell-input[type="number"] { min-width: 70px; }
+
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .badge-active   { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+  .badge-pending  { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
+  .badge-complete { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+
+  .action-btns { display: flex; gap: 6px; align-items: center; }
+  .btn-edit { background: none; border: 1px solid var(--border2); color: var(--accent2); cursor: pointer; padding: 4px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; border-radius: 3px; transition: background 0.1s; white-space: nowrap; }
+  .btn-edit:hover { background: rgba(2,132,199,0.08); }
+  .btn-save { background: var(--success); border: none; color: #fff; cursor: pointer; padding: 4px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; border-radius: 3px; transition: background 0.1s; white-space: nowrap; }
+  .btn-save:hover { background: #15803d; }
+  .btn-cancel { background: none; border: 1px solid var(--border2); color: var(--muted); cursor: pointer; padding: 4px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; border-radius: 3px; transition: background 0.1s; }
+  .btn-cancel:hover { background: var(--grid); }
+  .btn-del { background: none; border: 1px solid #fecaca; color: var(--danger); cursor: pointer; padding: 4px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; border-radius: 3px; transition: background 0.1s; }
+  .btn-del:hover { background: #fee2e2; }
+
+  .empty-row td { text-align: center; color: var(--muted); padding: 40px; font-style: italic; font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; animation: none; }
+
+  .projection-panel { background: var(--panel); border: 1px solid var(--border); border-top: 3px solid var(--accent2); padding: 24px; border-radius: 4px; box-shadow: var(--shadow); }
+  .chart-area { margin-top: 16px; overflow-x: auto; }
+  .chart-scroll { min-width: 600px; }
+  .month-bars { display: flex; gap: 4px; align-items: flex-end; height: 180px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+  .bar-wrap { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 160px; position: relative; }
+  .bar { width: 70%; border-radius: 3px 3px 0 0; transition: height 0.5s cubic-bezier(.4,0,.2,1); position: relative; min-height: 2px; }
+  .bar-hrs  { background: linear-gradient(180deg, #0ea5e9, #7dd3fc); }
+  .bar-jobs { background: linear-gradient(180deg, #f59e0b, #fcd34d); width: 40%; position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; }
+  .bar-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; margin-top: 6px; white-space: nowrap; }
+  .bar-val { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent2); position: absolute; top: -18px; width: 100%; text-align: center; }
+  .chart-legend { display: flex; gap: 20px; margin-top: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot  { width: 10px; height: 10px; border-radius: 2px; }
+
+  .needs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 8px; }
+  .need-card { background: var(--panel); border: 1px solid var(--border); padding: 16px; border-radius: 4px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+  .need-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+  .need-card .month-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .need-card .workers { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 700; color: var(--accent); margin: 4px 0 2px; }
+  .need-card .hrs-note { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .no-data-msg { color: var(--muted); font-style: italic; font-size: 14px; padding: 20px 0; }
+
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    padding: 10px 20px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none; z-index: 999; background: var(--success);
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.toast-error { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<!-- ── Config Banner ── -->
+<div id="config-banner">
+  <span class="cfg-label">⚙ JSONBin Setup</span>
+  <input type="password" id="cfg-apikey" placeholder="JSONBin Access Key  ($2a$10$...)" title="Your JSONBin Master Key or Access Key">
+  <input type="text"     id="cfg-binid"  placeholder="Bin ID  (67a3f2...)" title="Your JSONBin Bin ID">
+  <button id="btn-connect" onclick="connectBin()">Connect &amp; Load</button>
+  <span class="cfg-help">
+    Free at <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> — sign up → create a Bin → copy the Bin ID + your API key above.
+  </span>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div>
+      <h1>RankerAMG Field Labor Planner</h1>
+      <span>Workforce Projection System</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sync-badge offline" id="sync-badge">
+      <div class="sync-dot"></div>
+      <span id="sync-label">Not Connected</span>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="label">Total Jobs</div>
+        <div class="value" id="stat-jobs">0</div>
+      </div>
+      <div class="stat-pill blue">
+        <div class="label">Total Hours</div>
+        <div class="value" id="stat-hours">0</div>
+      </div>
+      <div class="stat-pill green">
+        <div class="label">Workers Needed</div>
+        <div class="value" id="stat-workers">0</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- FORM -->
+  <div>
+    <div class="section-title">Add Job Entry</div>
+    <div class="form-panel">
+      <div class="form-grid">
+        <div class="field"><label>Job Name / ID</label><input type="text" id="f-name" placeholder="e.g. Phase 1 Framing"></div>
+        <div class="field"><label>Start Date</label><input type="date" id="f-start"></div>
+        <div class="field"><label>End Date</label><input type="date" id="f-end"></div>
+        <div class="field"><label>Labor Hours</label><input type="number" id="f-hours" placeholder="e.g. 320" min="0"></div>
+        <div class="field"><label>Trade / Role</label><input type="text" id="f-trade" placeholder="e.g. Electrician"></div>
+        <div class="field"><label>Status</label>
+          <select id="f-status">
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="complete">Complete</option>
+          </select>
+        </div>
+        <div class="field"><label>Hrs/Worker/Week</label><input type="number" id="f-wkrhrs" value="40" min="1" max="80"></div>
+        <button class="btn-add" id="btn-add-job" onclick="addJob()">+ Add Job</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div>
+    <div class="section-title">Job Registry — click ✎ Edit to modify any row inline</div>
+    <div class="table-panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Job Name</th><th>Trade / Role</th><th>Start Date</th><th>End Date</th>
+            <th>Labor Hrs</th><th>Wks</th><th>Wkrs Needed</th><th>Hrs/Wkr/Wk</th>
+            <th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="job-table-body">
+          <tr class="empty-row"><td colspan="10">Connect to JSONBin above to load your jobs.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PROJECTION CHART -->
+  <div>
+    <div class="section-title">Monthly Labor Hour Projection</div>
+    <div class="projection-panel">
+      <div class="chart-area"><div class="chart-scroll"><div class="month-bars" id="bar-chart"></div></div></div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div> Labor Hours</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Active Jobs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIRING NEEDS -->
+  <div>
+    <div class="section-title">Projected Glazier Resources by Month</div>
+    <div id="hiring-needs-container"><div class="no-data-msg">Connect to JSONBin to see monthly hiring projections.</div></div>
+  </div>
+</main>
+
+<div id="loading-overlay" style="display:none">
+  <div class="spin"></div>
+  LOADING DATA...
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  CONFIG  — optionally hardcode your credentials here so the
+//  banner auto-connects on load (leave blank to enter manually)
+// ─────────────────────────────────────────────────────────────
+const HARDCODED_API_KEY = '$2a$10$8S4MjaBZR1OcBIUpF.rCSugSonTg6u0/tAUqJpr1QNBs2R8HhfanO';
+const HARDCODED_BIN_ID  = '69aee369ae596e708f71207b';
+// ─────────────────────────────────────────────────────────────
+
+let JSONBIN_API_KEY = HARDCODED_API_KEY;
+let JSONBIN_BIN_ID  = HARDCODED_BIN_ID;
+let jobs = [];
+let editingId = null;
+let saving = false;
+let connected = false;
+
+const JSONBIN_URL = () => `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+
+// ── Sync UI ───────────────────────────────────────────────────
+function setSyncState(state, label) {
+  const badge = document.getElementById('sync-badge');
+  const lbl   = document.getElementById('sync-label');
+  badge.className = 'sync-badge ' + state;
+  lbl.textContent = label;
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg || '✓ Done';
+  t.className = isError ? 'show toast-error' : 'show';
+  setTimeout(() => t.className = '', 2500);
+}
+
+// ── Loading overlay ───────────────────────────────────────────
+function showLoading(on) {
+  const el = document.getElementById('loading-overlay');
+  el.style.display = on ? 'flex' : 'none';
+}
+
+// ── JSONBin API ───────────────────────────────────────────────
+async function fetchBin() {
+  const res = await fetch(JSONBIN_URL() + '/latest', {
+    headers: {
+      'X-Master-Key': JSONBIN_API_KEY,
+      'X-Bin-Meta': 'false'
+    }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  // JSONBin wraps in { record: ... } — handle both formats
+  return Array.isArray(data) ? data : (Array.isArray(data.record) ? data.record : []);
+}
+
+async function writeBin(jobsArray) {
+  const res = await fetch(JSONBIN_URL(), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_API_KEY
+    },
+    body: JSON.stringify(jobsArray)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+}
+
+// ── Connect & Load ────────────────────────────────────────────
+async function connectBin() {
+  const keyEl = document.getElementById('cfg-apikey');
+  const binEl = document.getElementById('cfg-binid');
+  const apiKey = keyEl.value.trim() || JSONBIN_API_KEY;
+  const binId  = binEl.value.trim() || JSONBIN_BIN_ID;
+
+  if (!apiKey || !binId) {
+    showToast('⚠ Please enter both the API Key and Bin ID', true);
+    return;
+  }
+
+  JSONBIN_API_KEY = apiKey;
+  JSONBIN_BIN_ID  = binId;
+
+  const btn = document.getElementById('btn-connect');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  setSyncState('syncing', 'Connecting…');
+  showLoading(true);
+
+  try {
+    jobs = await fetchBin();
+    connected = true;
+
+    // Update banner to connected state
+    const banner = document.getElementById('config-banner');
+    banner.className = 'connected';
+    banner.innerHTML = `
+      <span class="cfg-label">✓ Connected to JSONBin</span>
+      <span class="cfg-help" style="color:#166534">Bin ID: <strong>${binId.slice(0,8)}…</strong> — data syncs across all devices automatically.</span>
+      <button onclick="disconnectBin()" style="background:none;border:1px solid #86efac;color:#166534;padding:6px 12px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;margin-left:auto;">Disconnect</button>
+    `;
+
+    setSyncState('synced', 'Cloud Sync ✓');
+    render();
+    showToast('✓ Connected — ' + jobs.length + ' job(s) loaded');
+
+    // Persist credentials in localStorage for convenience on reload
+    try {
+      localStorage.setItem('jsonbin_key', apiKey);
+      localStorage.setItem('jsonbin_bin', binId);
+    } catch(e) {}
+
+  } catch(err) {
+    setSyncState('error', 'Connection Failed');
+    showToast('⚠ Could not connect: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Connect & Load';
+  } finally {
+    showLoading(false);
+  }
+}
+
+function disconnectBin() {
+  connected = false;
+  JSONBIN_API_KEY = '';
+  JSONBIN_BIN_ID  = '';
+  try { localStorage.removeItem('jsonbin_key'); localStorage.removeItem('jsonbin_bin'); } catch(e) {}
+  location.reload();
+}
+
+async function saveToCloud() {
+  if (!connected || saving) return;
+  saving = true;
+  setSyncState('syncing', 'Saving…');
+  try {
+    await writeBin(jobs);
+    setSyncState('synced', 'Saved ✓');
+    setTimeout(() => setSyncState('synced', 'Cloud Sync ✓'), 2000);
+  } catch(err) {
+    setSyncState('error', 'Save Failed');
+    showToast('⚠ Save failed: ' + err.message, true);
+  } finally {
+    saving = false;
+  }
+}
+
+// ── Job Logic ─────────────────────────────────────────────────
+async function addJob() {
+  if (!connected) { showToast('⚠ Connect to JSONBin first', true); return; }
+
+  const name   = document.getElementById('f-name').value.trim();
+  const start  = document.getElementById('f-start').value;
+  const end    = document.getElementById('f-end').value;
+  const hours  = parseFloat(document.getElementById('f-hours').value);
+  const trade  = document.getElementById('f-trade').value.trim() || '—';
+  const status = document.getElementById('f-status').value;
+  const wkrHrs = parseFloat(document.getElementById('f-wkrhrs').value) || 40;
+
+  if (!name || !start || !end || isNaN(hours) || hours < 0) {
+    alert('Please fill in Job Name, Start Date, End Date, and Labor Hours.');
+    return;
+  }
+  if (new Date(end) < new Date(start)) {
+    alert('End date must be after start date.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-add-job');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  jobs.push({ id: Date.now(), name, start, end, hours, trade, status, wkrHrs });
+  await saveToCloud();
+  render();
+  showToast('✓ Job added');
+
+  ['f-name','f-hours','f-trade'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-start').value  = '';
+  document.getElementById('f-end').value    = '';
+  document.getElementById('f-status').value = 'pending';
+  document.getElementById('f-wkrhrs').value = '40';
+
+  btn.disabled = false;
+  btn.textContent = '+ Add Job';
+}
+
+async function deleteJob(id) {
+  if (!confirm('Delete this job?')) return;
+  jobs = jobs.filter(j => j.id !== id);
+  if (editingId === id) editingId = null;
+  await saveToCloud();
+  render();
+  showToast('✓ Job deleted');
+}
+
+function startEdit(id) {
+  editingId = id;
+  renderTable();
+  const el = document.getElementById(`e-name-${id}`);
+  if (el) el.focus();
+}
+
+function cancelEdit() { editingId = null; renderTable(); }
+
+async function saveEdit(id) {
+  const job = jobs.find(j => j.id === id);
+  if (!job) return;
+
+  const name   = document.getElementById(`e-name-${id}`).value.trim();
+  const start  = document.getElementById(`e-start-${id}`).value;
+  const end    = document.getElementById(`e-end-${id}`).value;
+  const hours  = parseFloat(document.getElementById(`e-hours-${id}`).value);
+  const trade  = document.getElementById(`e-trade-${id}`).value.trim() || '—';
+  const status = document.getElementById(`e-status-${id}`).value;
+  const wkrHrs = parseFloat(document.getElementById(`e-wkrhrs-${id}`).value) || 40;
+
+  if (!name || !start || !end || isNaN(hours) || hours < 0) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+  if (new Date(end) < new Date(start)) {
+    alert('End date must be after start date.');
+    return;
+  }
+
+  job.name = name; job.start = start; job.end = end; job.hours = hours;
+  job.trade = trade; job.status = status; job.wkrHrs = wkrHrs;
+
+  editingId = null;
+  await saveToCloud();
+  render();
+  showToast('✓ Job updated');
+}
+
+// ── Calculations ──────────────────────────────────────────────
+function weeksInRange(start, end) {
+  const ms = new Date(end) - new Date(start);
+  return Math.max(1, ms / (1000 * 60 * 60 * 24 * 7));
+}
+function workersNeeded(job) {
+  return Math.ceil(job.hours / (weeksInRange(job.start, job.end) * job.wkrHrs));
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Render ────────────────────────────────────────────────────
+function render() { renderTable(); renderProjection(); renderStats(); }
+
+function renderTable() {
+  const tbody = document.getElementById('job-table-body');
+  if (!jobs.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No jobs yet — use the form above to add one.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = jobs.map(j => {
+    const weeks   = weeksInRange(j.start, j.end).toFixed(1);
+    const workers = workersNeeded(j);
+    const badge   = j.status === 'active' ? 'badge-active' : j.status === 'complete' ? 'badge-complete' : 'badge-pending';
+    if (editingId === j.id) {
+      return `<tr class="editing-row">
+        <td><input class="cell-input" id="e-name-${j.id}"   type="text"   value="${escHtml(j.name)}"></td>
+        <td><input class="cell-input" id="e-trade-${j.id}"  type="text"   value="${escHtml(j.trade === '—' ? '' : j.trade)}" placeholder="Trade/Role"></td>
+        <td><input class="cell-input" id="e-start-${j.id}"  type="date"   value="${j.start}"></td>
+        <td><input class="cell-input" id="e-end-${j.id}"    type="date"   value="${j.end}"></td>
+        <td><input class="cell-input" id="e-hours-${j.id}"  type="number" value="${j.hours}" min="0"></td>
+        <td style="color:var(--muted);font-size:12px">${weeks}</td>
+        <td style="color:var(--accent);font-weight:700">${workers}</td>
+        <td><input class="cell-input" id="e-wkrhrs-${j.id}" type="number" value="${j.wkrHrs}" min="1" max="80" style="min-width:55px"></td>
+        <td>
+          <select class="cell-select" id="e-status-${j.id}">
+            <option value="pending"  ${j.status==='pending' ?'selected':''}>Pending</option>
+            <option value="active"   ${j.status==='active'  ?'selected':''}>Active</option>
+            <option value="complete" ${j.status==='complete'?'selected':''}>Complete</option>
+          </select>
+        </td>
+        <td><div class="action-btns">
+          <button class="btn-save"   onclick="saveEdit(${j.id})">✓ Save</button>
+          <button class="btn-cancel" onclick="cancelEdit()">✕</button>
+        </div></td>
+      </tr>`;
+    } else {
+      return `<tr>
+        <td>${escHtml(j.name)}</td>
+        <td>${escHtml(j.trade)}</td>
+        <td>${j.start}</td>
+        <td>${j.end}</td>
+        <td>${j.hours.toLocaleString()}</td>
+        <td>${weeks}</td>
+        <td style="color:var(--accent);font-weight:700">${workers}</td>
+        <td>${j.wkrHrs}</td>
+        <td><span class="badge ${badge}">${j.status}</span></td>
+        <td><div class="action-btns">
+          <button class="btn-edit" onclick="startEdit(${j.id})">✎ Edit</button>
+          <button class="btn-del"  onclick="deleteJob(${j.id})">✕</button>
+        </div></td>
+      </tr>`;
+    }
+  }).join('');
+}
+
+function renderStats() {
+  document.getElementById('stat-jobs').textContent    = jobs.length;
+  document.getElementById('stat-hours').textContent   = jobs.reduce((s,j) => s + j.hours, 0).toLocaleString();
+  document.getElementById('stat-workers').textContent = jobs.reduce((s,j) => s + workersNeeded(j), 0);
+}
+
+function getMonthsRange(jobs) {
+  if (!jobs.length) return [];
+  let min = new Date(Math.min(...jobs.map(j => new Date(j.start))));
+  let max = new Date(Math.max(...jobs.map(j => new Date(j.end))));
+  min = new Date(min.getFullYear(), min.getMonth(), 1);
+  max = new Date(max.getFullYear(), max.getMonth(), 1);
+  const months = [];
+  let cur = new Date(min);
+  while (cur <= max) { months.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
+  return months;
+}
+
+function hoursInMonth(job, year, month) {
+  const mStart = new Date(year, month, 1);
+  const mEnd   = new Date(year, month + 1, 0);
+  const jStart = new Date(job.start);
+  const jEnd   = new Date(job.end);
+  const oStart = new Date(Math.max(mStart, jStart));
+  const oEnd   = new Date(Math.min(mEnd, jEnd));
+  if (oEnd < oStart) return 0;
+  return job.hours * ((oEnd - oStart) / (jEnd - jStart || 1));
+}
+
+function renderProjection() {
+  const barChart  = document.getElementById('bar-chart');
+  const container = document.getElementById('hiring-needs-container');
+  if (!jobs.length) {
+    barChart.innerHTML  = '<div style="color:var(--muted);font-style:italic;padding:40px 0;font-size:14px;">Add jobs to generate projection.</div>';
+    container.innerHTML = '<div class="no-data-msg">Add jobs to see monthly hiring projections.</div>';
+    return;
+  }
+  const months = getMonthsRange(jobs);
+  const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthData = months.map(m => {
+    const y = m.getFullYear(), mo = m.getMonth();
+    let totalHrs = 0, activeJobs = 0, workersThisMonth = 0;
+    const weeksInMonth = new Date(y, mo + 1, 0).getDate() / 7;
+    jobs.forEach(j => {
+      const h = hoursInMonth(j, y, mo);
+      totalHrs += h;
+      if (h > 0) { activeJobs++; workersThisMonth += Math.ceil(h / (weeksInMonth * j.wkrHrs)); }
+    });
+    return { label: `${MN[mo]} ${y}`, short: `${MN[mo]}\n${y}`, hrs: Math.round(totalHrs), jobs: activeJobs, workers: workersThisMonth };
+  });
+  const maxHrs  = Math.max(...monthData.map(d => d.hrs), 1);
+  const maxJobs = Math.max(...monthData.map(d => d.jobs), 1);
+  barChart.innerHTML = monthData.map(d => `
+    <div class="bar-col">
+      <div class="bar-wrap">
+        <div class="bar bar-hrs" style="height:${(d.hrs/maxHrs)*100}%">
+          <div class="bar-val">${d.hrs > 0 ? d.hrs.toLocaleString() : ''}</div>
+        </div>
+        <div class="bar bar-jobs" style="height:${(d.jobs/maxJobs)*85}%"></div>
+      </div>
+      <div class="bar-label">${d.short.replace('\n','<br>')}</div>
+    </div>`).join('');
+  container.innerHTML = `<div class="needs-grid">${monthData.map(d => `
+    <div class="need-card">
+      <div class="month-label">${d.label}</div>
+      <div class="workers">${d.workers}</div>
+      <div class="hrs-note">${d.hrs.toLocaleString()} hrs · ${d.jobs} job${d.jobs !== 1 ? 's' : ''}</div>
+    </div>`).join('')}</div>`;
+}
+
+// ── Auto-connect if credentials saved or hardcoded ────────────
+(function autoConnect() {
+  let key = HARDCODED_API_KEY, bin = HARDCODED_BIN_ID;
+  if (!key || !bin) {
+    try { key = localStorage.getItem('jsonbin_key') || ''; bin = localStorage.getItem('jsonbin_bin') || ''; } catch(e) {}
+  }
+  if (key && bin) {
+    document.getElementById('cfg-apikey').value = key;
+    document.getElementById('cfg-binid').value  = bin;
+    connectBin();
+  }
+})();
+</script>
+</body>
+</html>
